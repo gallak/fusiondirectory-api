@@ -3,7 +3,7 @@ A wrapper for the webservice (RPC API) for FusionDirectory.
 """
 
 import requests
-
+import json
 
 class FusionDirectoryAPI:
     def __init__(
@@ -16,6 +16,8 @@ class FusionDirectoryAPI:
         login=True,
         enforce_encryption=True,
         client_id="python_api_wrapper",
+        dialog_uri="rest.php/v1/",
+        #dialog_uri="jsonrpc.php"
     ):
         """
         Log in to FusionDirectory server (Request a session ID)
@@ -29,17 +31,23 @@ class FusionDirectoryAPI:
             See requests documentation for options (https://2.python-requests.org/en/master/user/advanced/#verification)
             login: Automatically log in on object instantiation (Default: True)
             enforce_encryption: Raise an exception if traffic is unencrypted (Not https:// in host)
+            dialog_uri: could be jsonrpc.php for webservice 1.4 or rest.php/v1/ for version 1.4 of FusionDirectory or RPC before (see https://rest-api.fusiondirectory.info/)
         """
 
         # Must encrypt traffic
         if "https://" not in host and enforce_encryption:
             raise ValueError("Unencrypted host not allowed: {host}")
 
+        if "rest.php" not in dialog_uri:
+            self._use_rest_api = False
+        else:
+            self._use_rest_api = True
+
         # The session to use for all requests
         self._session = requests.Session()
 
         # The URL of the FD server
-        self._url = f"{host}/jsonrpc.php"
+        self._url = f"{host}/{dialog_uri}"
 
         # Log in to get this ID from FD
         self._session_id = None
@@ -52,7 +60,7 @@ class FusionDirectoryAPI:
 
         # Login to FD (Get a session_id)
         if login:
-            self.login(user, password, database)
+           self.login(user, password, database)
 
     def delete_object(self, object_type, object_dn):
         """
@@ -81,8 +89,12 @@ class FusionDirectoryAPI:
         Return the configured LDAP base for the selected LDAP
         in this webservice session (see login)
         """
-        data = {"method": "getBase", "params": [self._session_id]}
-        return self._post(data)
+        if self._use_rest_api :
+            response = "no equivalence for getBase trough API rest"
+        else:
+            data = {"method": "getBase", "params": [self._session_id]}
+            response = self._post(data)
+        return response
 
     def get_fields(self, object_type, object_dn=None, tab=None):
         """
@@ -143,8 +155,12 @@ class FusionDirectoryAPI:
         if not self._session_id:
             return self._session_id
 
-        data = {"method": "getId", "params": [self._session_id]}
-        return self._post(data)
+        if self._use_rest_api:
+            response = self._get("token")
+        else:
+            data = {"method": "getId", "params": [self._session_id]}
+            response = self._post(data)
+        return response
 
     def get_object(self, object_type, dn, attributes={"objectClass": "*"}):
         """
@@ -230,8 +246,13 @@ class FusionDirectoryAPI:
             A dict of databases managed by FusionDirectory. Key is id,
             value is displayable name.
         """
-        data = {"method": "listLdaps", "params": []}
-        return self._post(data)
+        if self._use_rest_api :
+            response = self._get("directories")
+        else:
+            data = {"method": "listLdaps", "params": []}
+            response = self._post(data)
+        return response
+
 
     def get_object_types(self):
         """
@@ -258,11 +279,18 @@ class FusionDirectoryAPI:
             A dictionary with tabs as keys and a dictionary with
             tab name (str) and active (Bool)
         """
-        data = {
-            "method": "listTabs",
-            "params": [self._session_id, object_type, object_dn],
-        }
-        return self._post(data)
+        if self._use_rest_api:
+           if object_dn:
+               response = self._get("objects/"+object_type+"/"+object_dn)
+           else:
+               response = self._get("types/"+object_type)
+        else:
+            data = {
+                "method": "listTabs",
+                "params": [self._session_id, object_type, object_dn],
+            }
+            response = self._post(data)
+        return response
 
     def get_object_type_info(self, object_type):
         """
@@ -323,8 +351,15 @@ class FusionDirectoryAPI:
         Returns:
             Session id (str)
         """
-        data = {"method": "login", "params": [database, user, password]}
-        self._session_id = self._post(data)
+
+        if self._use_rest_api:
+            #self._url = self._url + "/login"
+            data = {"directory": database, "user": user,"password" : password}
+            self._session_id = self._post(data,"/login")
+
+        else:
+            data = {"method": "login", "params": [database, user, password]}
+            self._session_id = self._post(data)
         return self._session_id
 
     def logout(self):
@@ -334,8 +369,12 @@ class FusionDirectoryAPI:
         Returns:
             Bool: True
         """
-        data = {"method": "logout", "params": [self._session_id]}
-        r = self._post(data)
+        data={}
+        if self._use_rest_api:
+            r=self._post(data,"logout")
+        else:
+            data = {"method": "logout", "params": [self._session_id]}
+            r = self._post(data)
         self._session_id = None
         return r
 
@@ -495,7 +534,29 @@ class FusionDirectoryAPI:
         r = self._post(data)
         return r
 
-    def _post(self, data):
+    def _get(self, uri):
+        """
+        Send data to the FusionDirectory server
+        get is only used by REST api
+
+        Args:
+            uri build
+
+        Returns:
+            result: The value of the key 'result' in the JSON returned by the server
+        """
+
+        # Post
+        r = self._session.get(self._url + uri, verify=self._verify_cert, headers={'Session-Token':self._session_id})
+        # Raise exception on error codes
+        r.raise_for_status()
+        # Get the json in the response
+        #print(r.json())
+
+        return r.text
+
+
+    def _post(self, data, uri=""):
         """
         Send data to the FusionDirectory server
 
@@ -505,23 +566,31 @@ class FusionDirectoryAPI:
         Returns:
             result: The value of the key 'result' in the JSON returned by the server
         """
+
+
+        # with REST api , url coudl change, so if url isn't specified we take main url ( mainly for RPC method)
+        url=self._url + uri
+
+        if self._use_rest_api:
+            headers={'Session-Token':self._session_id}
+        else:
         # Client ID (Se we can identify calls in server logs?
-        data["id"] = self._client_id
-
+            data["id"] = self._client_id
+            headers={}
         # Post
-        r = self._session.post(self._url, json=data, verify=self._verify_cert)
-
+        r = self._session.post(url, json=data, verify=self._verify_cert,headers=headers)
         # Raise exception on error codes
         r.raise_for_status()
-
         # Get the json in the response
         r = r.json()
-
-        if r["error"]:
-            raise LookupError(f"FD returned error: {r['error']}")
+        if self._use_rest_api:
+            return r
         else:
-            # The result value can have the key errors with a list
-            if type(r["result"]) == dict and r["result"].get("errors"):
-                raise LookupError("".join(r["result"]["errors"]))
+            if r["error"]:
+                raise LookupError(f"FD returned error: {r['error']}")
             else:
-                return r["result"]
+                # The result value can have the key errors with a list
+                if type(r["result"]) == dict and r["result"].get("errors"):
+                    raise LookupError("".join(r["result"]["errors"]))
+                else:
+                    return r["result"]
