@@ -13,6 +13,13 @@ following advantages:
 * LDAP data can be accessed via HTTP/HTTPS on ports 80/443 instead of through the LDAP ports 389/636.
 * Users can be locked/unlocked (Prefix encrypted password with _!_) without giving the API user access to the ldap field _userPassword_.
 
+# About REST API protocol ( from @gallak)
+
+It appears in version 1.4 of fusiondirectory with webservice plugins.
+This version try to provide REST dialog method with keeping compatifility with RPC API.
+But REST API provide more information and error catching method are not the same ..
+Keep in your mind the licence ... no warranty, but contribution are welcomed !
+
 # Installation
 
 Install with pip: `pip3 install fusiondirectory-api`
