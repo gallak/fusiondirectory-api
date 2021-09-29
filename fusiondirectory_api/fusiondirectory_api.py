@@ -108,11 +108,18 @@ class FusionDirectoryAPI:
         Returns:
             All FD attributes organized as sections
         """
-        data = {
-            "method": "getFields",
-            "params": [self._session_id, object_type, object_dn, tab],
-        }
-        return self._post(data)
+        if self._use_rest_api :
+            if object_dn :
+                response = self._get("objects/"+ object_type+"/"+ object_dn)
+            else :
+                response = self._get("types/"+ object_type+"/"+tab)
+        else :
+            data = {
+                "method": "getFields",
+                "params": [self._session_id, object_type, object_dn, tab],
+            }
+            response = self._post(data)
+        return response
 
     def get_number_of_objects(self, object_type, ou=None, filter=None):
         """
@@ -251,7 +258,6 @@ class FusionDirectoryAPI:
             data = {"method": "listLdaps", "params": []}
             response = self._post(data)
         return response
-
 
     def get_object_types(self):
         """

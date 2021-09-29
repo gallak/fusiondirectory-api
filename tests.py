@@ -26,7 +26,8 @@ api = FusionDirectoryAPI(
 # for ot in ["USER"]:
 #         print(str(api.get_tabs(ot,"uid=sadgorilla782,ou=people,dc=demo,dc=fusion")))
 
-print(api.get_object_types())
+# OK print(api.get_object_types())
+print(api.get_fields('user','',''))
 
 #print(LDAP_BASE)
 
