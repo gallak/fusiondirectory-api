@@ -127,7 +127,7 @@ class FusionDirectoryAPI:
 
         Args:
             object_type (str): The object type
-            ou (str): The OU to search for objects in. Base is used if OU is None
+            ou (str): The OU to search for objects in. Base is used if OU is None (should be mandatory ?)
             filter (str): An LDAP filter to limit the results
 
         Returns:
