@@ -10,11 +10,25 @@ api = FusionDirectoryAPI(
   host = os.getenv("FD_HOST"),
   user = ADMIN_USER_UID,
   password = os.getenv("FD_PASSWORD"),
+  #password = "toto",
   database = os.getenv("FD_DATABASE"),
+  enforce_encryption=False,
+  dialog_uri="rest.php/v1/",
+  #dialog_uri="jsonrpc.php"
   )
 
 # Get the base so we can check DNs (DN must include base)
-LDAP_BASE = api.get_base()
+# OK print(api.get_base())
+# OK print(api.get_databases())
+# KO print(api.logout())
+
+# OK
+# for ot in ["USER"]:
+#         print(str(api.get_tabs(ot,"uid=sadgorilla782,ou=people,dc=demo,dc=fusion")))
+
+print(api.get_object_types())
+
+#print(LDAP_BASE)
 
 def random_string(length=32):
     s = ""
@@ -198,4 +212,3 @@ def test_number_of_objects():
 # set_password()
 # LOGIN
 # LOGOUT
-

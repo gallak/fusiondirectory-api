@@ -17,7 +17,6 @@ class FusionDirectoryAPI:
         enforce_encryption=True,
         client_id="python_api_wrapper",
         dialog_uri="rest.php/v1/",
-        #dialog_uri="jsonrpc.php"
     ):
         """
         Log in to FusionDirectory server (Request a session ID)
@@ -262,8 +261,12 @@ class FusionDirectoryAPI:
             A dictionary with object type as key and
             object name (Used in GUI) as value
         """
-        data = {"method": "listTypes", "params": [self._session_id]}
-        return self._post(data)
+        if self._use_rest_api :
+            response = self._get("types")
+        else :
+            data = {"method": "listTypes", "params": [self._session_id]}
+            response = self._post(data)
+        return response
 
     def get_tabs(self, object_type, object_dn=None):
         """
