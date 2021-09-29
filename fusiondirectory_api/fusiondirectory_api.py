@@ -220,7 +220,7 @@ class FusionDirectoryAPI:
         # assert type(r) == dict
         return r
 
-    def get_objects(self, object_type, attributes=None, ou=None, filter=None):
+    def get_objects(self, object_type, attributes=None, ou=None, filter=None,templates=None,scope="subtree"):
         """
         Get objects of a certain type. Potentially with LDAP attributes and limited
         by OU and/or a filter.
@@ -242,15 +242,31 @@ class FusionDirectoryAPI:
         Returns:
             A list of objects as a dictionary with DN as keys (list)
         """
-        data = {
-            "method": "ls",
-            "params": [self._session_id, object_type, attributes, ou, filter],
-        }
-        # FIXME: Check what data is returned if no objects are found
-        r = self._post(data)
-        # An empty list is returned on no results. I need a dict.
-        if r == []:
-            r = {}
+        if self._use_rest_api :
+            payload={}
+            if ou :
+                payload.update({'base' : ou})
+            if filter:
+                payload.update({'filter' : filter})
+            if attributes :
+                attributes_string=""
+                for key, value in attributes.items():
+                    attributes_string = attributes_string + "attrs["+str(key)+"]="+str(value)+"&"
+            if templates:
+                payload.update({'templates' : templates})
+            if scope:
+                payload.update({'scope' : scope})
+            r = self._get("objects/"+ object_type+"?"+attributes_string, payload)
+        else :
+            data = {
+                "method": "ls",
+                "params": [self._session_id, object_type, attributes, ou, filter],
+            }
+            # FIXME: Check what data is returned if no objects are found
+            r = self._post(data)
+            # An empty list is returned on no results. I need a dict.
+            if r == []:
+                r = {}
         # assert type(r) == dict
         return r
 
@@ -571,7 +587,7 @@ class FusionDirectoryAPI:
         # Raise exception on error codes
         r.raise_for_status()
         # Get the json in the response
-        #print(r.json())
+        #print(r.url)
 
         return r.text
 
