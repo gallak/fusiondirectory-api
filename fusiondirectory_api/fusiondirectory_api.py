@@ -136,12 +136,23 @@ class FusionDirectoryAPI:
             maybe others, results in a None value from the API. This functions
             returns -1 in those cases.
         """
+        if self._use_rest_api :
+            payload={}
+            if ou :
+                payload.update({ 'base' : ou })
+            if filter:
+                payload.update({ 'filter' : filter })
 
-        data = {
-            "method": "count",
-            "params": [self._session_id, object_type, ou, filter],
-        }
-        r = self._post(data)
+            response = self._get("objects/"+ object_type, payload)
+            r = len(json.loads(response))
+
+        else:
+            data = {
+                "method": "count",
+                "params": [self._session_id, object_type, ou, filter],
+            }
+            r = self._post(data)
+
         # The API returns None for some object types
         # I'm aware of these: ["DASHBOARD", "SPECIAL", "LDAPMANAGER"]
         # Let's return -1, so we always return an int
@@ -543,7 +554,7 @@ class FusionDirectoryAPI:
         r = self._post(data)
         return r
 
-    def _get(self, uri):
+    def _get(self, uri, payload=None):
         """
         Send data to the FusionDirectory server
         get is only used by REST api
@@ -556,7 +567,7 @@ class FusionDirectoryAPI:
         """
 
         # Post
-        r = self._session.get(self._url + uri, verify=self._verify_cert, headers={'Session-Token':self._session_id})
+        r = self._session.get(self._url + uri, verify=self._verify_cert, headers={'Session-Token':self._session_id}, params=payload)
         # Raise exception on error codes
         r.raise_for_status()
         # Get the json in the response
