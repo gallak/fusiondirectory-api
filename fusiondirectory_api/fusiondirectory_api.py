@@ -338,8 +338,12 @@ class FusionDirectoryAPI:
         Returns:
             A dictionary of information on the object type
         """
-        data = {"method": "infos", "params": [self._session_id, object_type]}
-        return self._post(data)
+        if self._use_rest_api:
+            response = self._get("types/"+object_type)
+        else:
+            data = {"method": "infos", "params": [self._session_id, object_type]}
+            response = self._post(data)
+        return response
 
     def user_is_locked(self, user_dn):
         """
