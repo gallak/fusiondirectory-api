@@ -428,11 +428,17 @@ class FusionDirectoryAPI:
         Returns:
             A recovery token (str)
         """
-        data = {"method": "recoveryGenToken", "params": [self._session_id, email]}
-        r = self._post(data)
+        if self._use_rest_api:
+            payload = {'email': email}
+            r=self._get("recovery",payload)
+            response = json.loads(r)['token']
+        else:
+            data = {"method": "recoveryGenToken", "params": [self._session_id, email]}
+            r = self._post(data)
+            response = r["token"]
         # FIXME: I get no UID in the dict (Value == None).
         # According to the documentation, I should?
-        return r["token"]
+        return response
 
     def get_template(self, object_type, template_dn):
         """
