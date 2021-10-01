@@ -451,11 +451,16 @@ class FusionDirectoryAPI:
         Returns:
             dict: FusionDirectory attributes organized as tabs
         """
-        data = {
-            "method": "gettemplate",
-            "params": [self._session_id, object_type, template_dn],
-        }
-        return self._post(data)
+        if self._use_rest_api:
+            r=self._get("objects/"+ str(object_type) + "/" + str(template_dn) + "/templatefields")
+            response = r
+        else:
+            data = {
+                "method": "gettemplate",
+                "params": [self._session_id, object_type, template_dn],
+            }
+            response = self._post(data)
+        return response
 
     def delete_tab(self, object_type, object_dn, tab):
         """
