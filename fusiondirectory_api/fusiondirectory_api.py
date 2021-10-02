@@ -527,9 +527,18 @@ class FusionDirectoryAPI:
             The DN of the created object (str)
         """
         if template_dn:
-            return self._create_object_from_template(object_type, template_dn, values)
+            if self._use_rest_api:
+                rest_values = {'attrs' : values, "template": template_dn}
+                response = self._post(rest_values,"objects/"+object_type)
+            else:
+                response = self._create_object_from_template(object_type, template_dn, values)
         else:
-            return self._set_fields(object_type, None, values)
+            if self._use_rest_api:
+                rest_values = {'attrs' : values}
+                response = self._post(rest_values,"objects/"+object_type)
+            else:
+                response = self._set_fields(object_type, None, values)
+        return response
 
     def update_object(self, object_type, object_dn, values):
         """
@@ -691,7 +700,8 @@ class FusionDirectoryAPI:
         # Post
         r = self._session.post(url, json=data, verify=self._verify_cert,headers=headers)
         # Raise exception on error codes
-        r.raise_for_status()
+        if not self._use_rest_api:
+            r.raise_for_status()
         # Get the json in the response
         r = r.json()
         if self._use_rest_api:
