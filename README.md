@@ -20,6 +20,10 @@ This version try to provide REST dialog method with keeping compatifility with R
 But REST API provide more information and error catching method are not the same ..
 Keep in your mind the licence ... no warranty, but contribution are welcomed !
 
+Pay attention /!\
+Data returned from REST and RPC could be different  ( mainly about syntax, JSONj returned from RPOC isn't JSON strict , but REST responses are)
+Error message management should be reworking
+
 # Installation
 
 Install with pip: `pip3 install fusiondirectory-api`
