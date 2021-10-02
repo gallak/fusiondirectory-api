@@ -355,15 +355,19 @@ class FusionDirectoryAPI:
         Returns:
             True if user locked. False if not locked.
         """
-        # API accepts both list of DNs and a single DN. I don't
-        if type(user_dn) != str:
-            raise ValueError("user_dn must be a string")
-        data = {"method": "isUserLocked", "params": [self._session_id, user_dn]}
-        r = self._post(data)
-        # API returns a dict with DN as key, and 0 or 1 in value
-        # assert len(r) == 1
-        # Return value in dict as bool
-        return bool(list(r.values())[0])
+        if self._use_rest_api:
+            response = self._get("userlock/"+user_dn)
+        else:
+            # API accepts both list of DNs and a single DN. I don't
+            if type(user_dn) != str:
+                raise ValueError("user_dn must be a string")
+            data = {"method": "isUserLocked", "params": [self._session_id, user_dn]}
+            r = self._post(data)
+            # API returns a dict with DN as key, and 0 or 1 in value
+            # assert len(r) == 1
+            # Return value in dict as bool
+            response = bool(list(r.values())[0])
+        return response
 
     def lock_user(self, user_dn):
         """
@@ -376,7 +380,7 @@ class FusionDirectoryAPI:
             Bool: True on success
         """
         if self._use_rest_api:
-            payload={'true':True}
+            payload={"foo": True}
             self._put("userlock/" + user_dn, payload)
         else:
             data = {"method": "lockUser", "params": [self._session_id, user_dn, "lock"]}
@@ -565,8 +569,13 @@ class FusionDirectoryAPI:
         Returns:
             result: True on success
         """
-        data = {"method": "lockUser", "params": [self._session_id, user_dn, "unlock"]}
-        self._post(data)
+        if self._use_rest_api:
+            # empty payload is mandatory to unlock
+            payload={}
+            self._put("userlock/" + user_dn, payload)
+        else:
+            data = {"method": "lockUser", "params": [self._session_id, user_dn, "unlock"]}
+            self._post(data)
         return True
 
     def _create_object_from_template(self, object_type, template_dn, values):
