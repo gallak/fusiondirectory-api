@@ -375,8 +375,12 @@ class FusionDirectoryAPI:
         Returns:
             Bool: True on success
         """
-        data = {"method": "lockUser", "params": [self._session_id, user_dn, "lock"]}
-        self._post(data)
+        if self._use_rest_api:
+            payload={'true':True}
+            self._put("userlock/" + user_dn, payload)
+        else:
+            data = {"method": "lockUser", "params": [self._session_id, user_dn, "lock"]}
+            self._post(data)
         return True
 
     def login(self, user, password, database):
@@ -454,6 +458,7 @@ class FusionDirectoryAPI:
         if self._use_rest_api:
             r=self._get("objects/"+ str(object_type) + "/" + str(template_dn) + "/templatefields")
             response = r
+            # FIXME : REST response is smaller than RPC's but correct too
         else:
             data = {
                 "method": "gettemplate",
@@ -606,6 +611,26 @@ class FusionDirectoryAPI:
 
         return r.text
 
+    def _put(self, uri, payload=None):
+        """
+        Send data to the FusionDirectory server
+        get is only used by REST api
+
+        Args:
+            uri build
+
+        Returns:
+            result: The value of the key 'result' in the JSON returned by the server
+        """
+
+        # Post
+        r = self._session.put(self._url + uri, verify=self._verify_cert, headers={'Session-Token':self._session_id}, json=payload)
+        # Raise exception on error codes
+        r.raise_for_status()
+        # Get the json in the response
+        #print(r.url)
+
+        return r.text
 
     def _post(self, data, uri=""):
         """
