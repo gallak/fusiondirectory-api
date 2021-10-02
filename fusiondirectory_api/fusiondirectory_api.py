@@ -503,11 +503,15 @@ class FusionDirectoryAPI:
         Returns:
             The object DN on success
         """
-        data = {
-            "method": "setFields",
-            "params": [self._session_id, object_type, object_dn, values],
-        }
-        return self._post(data)
+        if self._use_rest_api:
+            response = self._patch("objects/"+object_type+"/"+object_dn, payload=values)
+        else:
+            data = {
+                "method": "setFields",
+                "params": [self._session_id, object_type, object_dn, values],
+            }
+            response=self._post(data)
+        return response
 
     def create_object(self, object_type, values, template_dn=None):
         """
@@ -636,6 +640,28 @@ class FusionDirectoryAPI:
         r = self._session.put(self._url + uri, verify=self._verify_cert, headers={'Session-Token':self._session_id}, json=payload)
         # Raise exception on error codes
         r.raise_for_status()
+        # Get the json in the response
+        #print(r.url)
+
+        return r.text
+
+    def _patch(self, uri, payload=None):
+        """
+        Send data to the FusionDirectory server
+        get is only used by REST api
+
+        Args:
+            uri build
+            payload
+
+        Returns:
+            result: The value of the key 'result' in the JSON returned by the server
+        """
+
+        # Post
+        r = self._session.patch(self._url + uri, verify=self._verify_cert, headers={'Session-Token':self._session_id}, json=payload)
+        # Raise exception on error codes
+        #r.raise_for_status()
         # Get the json in the response
         #print(r.url)
 
