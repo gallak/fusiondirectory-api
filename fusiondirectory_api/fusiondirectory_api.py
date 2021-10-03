@@ -82,10 +82,10 @@ class FusionDirectoryAPI:
             }
             r = self._post(data)
         # Api returns nothing on success, so anything is an error
-        if r:
-            raise LookupError(r)
-        else:
-            return True
+            if r:
+                raise LookupError(r)
+            else:
+                return True
 
     def get_base(self):
         """
@@ -487,11 +487,15 @@ class FusionDirectoryAPI:
         Returns:
             The object DN on success
         """
-        data = {
-            "method": "removetab",
-            "params": [self._session_id, object_type, object_dn, tab],
-        }
-        return self._post(data)
+        if self._use_rest_api:
+            response = self._delete("objects/" + object_type + "/"+ object_dn + "/" + tab)
+        else:
+            data = {
+                "method": "removetab",
+                "params": [self._session_id, object_type, object_dn, tab],
+            }
+            response = self._post(data)
+        return response
 
     def _set_fields(self, object_type, object_dn, values):
         """
