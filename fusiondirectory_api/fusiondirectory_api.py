@@ -72,11 +72,15 @@ class FusionDirectoryAPI:
         Returns:
             True on success
         """
-        data = {
-            "method": "delete",
-            "params": [self._session_id, object_type, object_dn],
-        }
-        r = self._post(data)
+
+        if self._use_rest_api:
+            r = self._delete("objects/"+object_type+"/"+object_dn)
+        else:
+            data = {
+                "method": "delete",
+                "params": [self._session_id, object_type, object_dn],
+            }
+            r = self._post(data)
         # Api returns nothing on success, so anything is an error
         if r:
             raise LookupError(r)
@@ -649,6 +653,27 @@ class FusionDirectoryAPI:
         r = self._session.put(self._url + uri, verify=self._verify_cert, headers={'Session-Token':self._session_id}, json=payload)
         # Raise exception on error codes
         r.raise_for_status()
+        # Get the json in the response
+        #print(r.url)
+
+        return r.text
+
+    def _delete(self, uri):
+        """
+        Send data to the FusionDirectory server
+        get is only used by REST api
+
+        Args:
+            uri build
+
+        Returns:
+            result: The value of the key 'result' in the JSON returned by the server
+        """
+
+        # Post
+        r = self._session.delete(self._url + uri, verify=self._verify_cert, headers={'Session-Token':self._session_id})
+        # Raise exception on error codes
+        #r.raise_for_status()
         # Get the json in the response
         #print(r.url)
 
