@@ -125,6 +125,30 @@ class FusionDirectoryAPI:
             response = self._post(data)
         return response
 
+ #   def get_number_of_objects(self, object_type, ou=None, filter=None):
+
+    def search_objects(self, object_type, ou=None, filter=None):
+        """
+        Search objects with filter
+
+        Args:
+            object_type (str): The object type
+            ou (str): The OU to search for objects in. Base is used if OU is None (should be mandatory ?)
+            filter (str): An LDAP filter to limit the results
+
+        Returns:
+            return a json object
+        """
+        if self._use_rest_api :
+            payload={}
+            if ou :
+                payload.update({ 'base' : ou })
+            if filter:
+                payload.update({ 'filter' : filter })
+
+            response = self._get("objects/"+ object_type, payload)
+        return response
+
     def get_number_of_objects(self, object_type, ou=None, filter=None):
         """
         Get the number of a given object type limited by OU and/or filter
@@ -141,14 +165,8 @@ class FusionDirectoryAPI:
             returns -1 in those cases.
         """
         if self._use_rest_api :
-            payload={}
-            if ou :
-                payload.update({ 'base' : ou })
-            if filter:
-                payload.update({ 'filter' : filter })
-
-            response = self._get("objects/"+ object_type, payload)
-            r = len(json.loads(response))
+            response = self.search_objects(object_type,ou,filter)
+            r = len(response)
 
         else:
             data = {
@@ -408,7 +426,6 @@ class FusionDirectoryAPI:
             #self._url = self._url + "/login"
             data = {"directory": database, "user": user,"password" : password}
             self._session_id = self._post(data,"/login")
-
         else:
             data = {"method": "login", "params": [database, user, password]}
             self._session_id = self._post(data)
@@ -443,7 +460,8 @@ class FusionDirectoryAPI:
         if self._use_rest_api:
             payload = {'email': email}
             r=self._get("recovery",payload)
-            response = json.loads(r)['token']
+            response = r
+            # json.loads(r)['token']
         else:
             data = {"method": "recoveryGenToken", "params": [self._session_id, email]}
             r = self._post(data)
@@ -466,6 +484,7 @@ class FusionDirectoryAPI:
         if self._use_rest_api:
             r=self._get("objects/"+ str(object_type) + "/" + str(template_dn) + "/templatefields")
             response = r
+
             # FIXME : REST response is smaller than RPC's but correct too
         else:
             data = {
@@ -621,89 +640,100 @@ class FusionDirectoryAPI:
         return r
 
     def _get(self, uri, payload=None):
+
         """
-        Send data to the FusionDirectory server
-        get is only used by REST api
+        Send GET request to the FusionDirectory server
+        GET is only used by REST api
 
         Args:
-            uri build
+            uri build (mandatory)
+            payload
 
         Returns:
-            result: The value of the key 'result' in the JSON returned by the server
+            F: The value of the key 'result' in the JSON returned by the server
         """
 
-        # Post
+        # Get
         r = self._session.get(self._url + uri, verify=self._verify_cert, headers={'Session-Token':self._session_id}, params=payload)
-        # Raise exception on error codes
-        r.raise_for_status()
-        # Get the json in the response
-        #print(r.url)
+        print("GET    : " + uri + " => " + str(r.status_code))
 
-        return r.text
+        if r.status_code != 200 :
+            print("ERROR : " + str(json.loads(r.text)[0]['message']))
+            return False
+        else :
+            return r.json()
 
     def _put(self, uri, payload=None):
         """
-        Send data to the FusionDirectory server
-        get is only used by REST api
+        Send PUT request to the FusionDirectory server
+        PUT is only used by REST api
 
         Args:
-            uri build
+            uri build (mandatory)
+            payload as json data
 
         Returns:
-            result: The value of the key 'result' in the JSON returned by the server
+            result: True if success, False otherwise
         """
 
-        # Post
+        # Put
         r = self._session.put(self._url + uri, verify=self._verify_cert, headers={'Session-Token':self._session_id}, json=payload)
-        # Raise exception on error codes
-        r.raise_for_status()
-        # Get the json in the response
-        #print(r.url)
+        print("PUT    : " + uri + " => " + str(r.status_code))
 
-        return r.text
+        # Documentation indicate that it should be 200 instead of 204
+        if r.status_code != 204 :
+            print("ERROR : " + str(json.loads(r.text)[0]['message']))
+            # FIXME despite setting False it return True
+            return False
+        else :
+            return r.text
+
 
     def _delete(self, uri):
         """
-        Send data to the FusionDirectory server
-        get is only used by REST api
+        Send DELETE request to the FusionDirectory server
+        DELETE is only used by REST api
 
         Args:
-            uri build
+            uri build (mandatory)
 
         Returns:
-            result: The value of the key 'result' in the JSON returned by the server
+            False if deleted failed ( with error on standard output)
+            True is deletion is successful
         """
 
         # Post
         r = self._session.delete(self._url + uri, verify=self._verify_cert, headers={'Session-Token':self._session_id})
-        # Raise exception on error codes
-        #r.raise_for_status()
-        # Get the json in the response
-        #print(r.url)
-
-        return r.text
+        print("DELETE : " + uri + " => " + str(r.status_code))
+        if r.status_code != 204 :
+            print("ERROR : " + str(json.loads(r.text)[0]['message']))
+            return False
+        else :
+            return r.text
 
     def _patch(self, uri, payload=None):
         """
-        Send data to the FusionDirectory server
-        get is only used by REST api
+        Send PATCH request to the FusionDirectory server
+        PATCH is only used by REST api
 
         Args:
-            uri build
+            uri build (mandatory)
             payload
 
         Returns:
-            result: The value of the key 'result' in the JSON returned by the server
+            result: The Dn object if success, False otherwise
         """
 
-        # Post
-        r = self._session.patch(self._url + uri, verify=self._verify_cert, headers={'Session-Token':self._session_id}, json=payload)
-        # Raise exception on error codes
-        #r.raise_for_status()
-        # Get the json in the response
-        #print(r.url)
 
-        return r.text
+        r = self._session.patch(self._url + uri, verify=self._verify_cert, headers={'Session-Token':self._session_id}, json=payload)
+        print("PATCH  : " + uri + " => " + str(r.status_code) )
+
+        if r.status_code != 200 :
+            print("ERROR : " + str(json.loads(r.text)[0]['message']))
+            return False
+        else :
+            return r.json()
+
 
     def _post(self, data, uri=""):
         """
@@ -722,20 +752,27 @@ class FusionDirectoryAPI:
 
         if self._use_rest_api:
             headers={'Session-Token':self._session_id}
+            r = self._session.post(url, json=data, verify=self._verify_cert,headers=headers)
+            print("POST   : " + uri + " => " + str(r.status_code))
+            # status_code :
+            # 200 for login
+            # 204 for logout
+            # 201 for creating object
+            if r.status_code == 204 or r.status_code == 200 or r.status_code == 201 :
+                return r.json()
+            else :
+                return False
+
         else:
         # Client ID (Se we can identify calls in server logs?
             data["id"] = self._client_id
             headers={}
-        # Post
-        r = self._session.post(url, json=data, verify=self._verify_cert,headers=headers)
-        # Raise exception on error codes
-        if not self._use_rest_api:
+            # Post
+            r = self._session.post(url, json=data, verify=self._verify_cert,headers=headers)
+            # Raise exception on error codes
             r.raise_for_status()
-        # Get the json in the response
-        r = r.json()
-        if self._use_rest_api:
-            return r
-        else:
+            # Get the json in the response
+
             if r["error"]:
                 raise LookupError(f"FD returned error: {r['error']}")
             else:
